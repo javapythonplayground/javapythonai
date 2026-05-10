@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CodeMind LLM — Java &amp; Python AI Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f1117;
+      --bg2:         #181b24;
+      --bg3:         #1e2130;
+      --border:      #2a2d3e;
+      --text:        #e2e4ef;
+      --text2:       #9499b5;
+      --text3:       #5a5f7a;
+      --blue:        #4f8ef7;
+      --blue-bg:     #1a2540;
+      --green:       #4ade80;
+      --green-bg:    #132a1f;
+      --yellow:      #fbbf24;
+      --yellow-bg:   #2a1f0a;
+      --red:         #f87171;
+      --red-bg:      #2a1010;
+      --purple:      #a78bfa;
+      --purple-bg:   #1e1535;
+      --radius:      10px;
+      --mono:        'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --sans:        'Inter', system-ui, sans-serif;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+    /* ---- HEADER ---- */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--blue-bg); display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { color: var(--blue); }
+    .logo-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .logo-sub { font-size: 12px; color: var(--text2); }
+    .lang-tabs {
+      display: flex; gap: 4px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 8px; padding: 3px;
+    }
+    .lang-tab {
+      padding: 5px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: none; background: transparent; color: var(--text2);
+      transition: all 0.15s;
+    }
+    .lang-tab.active { background: var(--blue-bg); color: var(--blue); }
+    .lang-tab:hover:not(.active) { background: var(--bg3); color: var(--text); }
+
+    /* ---- LAYOUT ---- */
+    .workspace {
+      display: grid; grid-template-columns: 1fr 1fr;
+      height: calc(100vh - 61px);
+    }
+    .panel-left  { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .panel-right { display: flex; flex-direction: column; }
+
+    /* ---- PANEL HEADERS ---- */
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+    .mode-switch { display: flex; gap: 3px; }
+    .mode-btn {
+      padding: 4px 12px; border-radius: 5px; font-size: 12px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--text2);
+      transition: all .15s;
+    }
+    .mode-btn.active { background: var(--green-bg); color: var(--green); border-color: transparent; }
+
+    /* ---- INPUT AREA ---- */
+    .input-area { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; overflow-y: auto; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 4px 11px; border-radius: 20px; font-size: 11px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg3); color: var(--text2);
+      transition: all .15s;
+    }
+    .chip:hover { background: var(--blue-bg); color: var(--blue); border-color: transparent; }
+
+    label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; }
+
+    textarea {
+      width: 100%; font-family: var(--mono); font-size: 13px; line-height: 1.65;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 13px; background: var(--bg2); color: var(--text);
+      resize: none; outline: none; transition: border .15s;
+    }
+    textarea:focus { border-color: var(--blue); }
+    textarea.prompt-ta { height: 80px; font-family: var(--sans); font-size: 13.5px; }
+    textarea.code-ta { flex: 1; min-height: 180px; }
+
+    .code-input-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+    .actions { display: flex; gap: 8px; }
+    .btn-run {
+      flex: 1; padding: 10px; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; background: var(--blue); color: #fff;
+      transition: opacity .15s;
+    }
+    .btn-run:hover { opacity: .85; }
+    .btn-run:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-clear {
+      padding: 10px 16px; border-radius: var(--radius); font-size: 13px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--text2);
+      transition: all .15s;
+    }
+    .btn-clear:hover { background: var(--bg3); color: var(--text); }
+
+    /* ---- OUTPUT AREA ---- */
+    .output-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .output-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 18px; border-bottom: 1px solid var(--border); background: var(--bg2);
+    }
+    .output-meta { font-size: 11px; color: var(--text3); }
+    .btn-copy {
+      padding: 3px 12px; border-radius: 5px; font-size: 11px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--text2);
+      display: none;
+    }
+    .btn-copy:hover { background: var(--bg3); color: var(--text); }
+    .code-output {
+      flex: 1; font-family: var(--mono); font-size: 12.5px; line-height: 1.75;
+      padding: 16px 18px; background: var(--bg); color: var(--text);
+      overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+      min-height: 0;
+    }
+    .placeholder-txt { color: var(--text3); font-style: italic; font-family: var(--sans); font-size: 13px; }
+
+    /* ---- STATUS BADGE ---- */
+    .status-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; padding: 3px 9px; border-radius: 20px;
+    }
+    .status-badge.idle   { background: var(--bg3);        color: var(--text2); }
+    .status-badge.run    { background: var(--blue-bg);    color: var(--blue);  }
+    .status-badge.done   { background: var(--green-bg);   color: var(--green); }
+    .status-badge.error  { background: var(--red-bg);     color: var(--red);   }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-dot.pulse { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* ---- NOTIFICATION LOG ---- */
+    .notif-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .notif-log { overflow-y: auto; max-height: 200px; padding: 10px 16px; display: flex; flex-direction: column; gap: 5px; background: var(--bg); }
+    .notif-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .dot.info       { background: var(--blue); }
+    .dot.success    { background: var(--green); }
+    .dot.warning    { background: var(--yellow); }
+    .dot.error      { background: var(--red); }
+    .dot.processing { background: var(--purple); animation: pulse 1s infinite; }
+    .notif-msg { flex: 1; color: var(--text2); line-height: 1.5; }
+    .notif-time { font-size: 10px; color: var(--text3); flex-shrink: 0; }
+    .btn-log-clear {
+      padding: 2px 9px; border-radius: 4px; font-size: 11px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--text3);
+    }
+    .btn-log-clear:hover { color: var(--text2); background: var(--bg3); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none"
+           stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="5,3 1,8 5,13"/>
+        <polyline points="11,3 15,8 11,13"/>
+        <line x1="9" y1="2" x2="7" y2="14"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-title">CodeMind LLM</div>
+      <div class="logo-sub">Java &amp; Python · Generate · Debug</div>
+    </div>
+  </div>
+  <div class="lang-tabs">
+    <button class="lang-tab active" id="tab-python" onclick="setLang('python')">Python</button>
+    <button class="lang-tab"        id="tab-java"   onclick="setLang('java')">Java</button>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- LEFT: INPUT -->
+  <div class="panel-left">
+    <div class="panel-header">
+      <span class="panel-title" id="input-label">Describe what to build</span>
+      <div class="mode-switch">
+        <button class="mode-btn active" id="btn-generate" onclick="setMode('generate')">Generate</button>
+        <button class="mode-btn"        id="btn-debug"    onclick="setMode('debug')">Debug</button>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="chips" id="hint-chips"></div>
+
+      <div>
+        <label id="prompt-label">What do you want to build?</label>
+        <textarea id="prompt-input" class="prompt-ta"
+          placeholder="e.g. Write a binary search tree with insert, delete, and in-order traversal"></textarea>
+      </div>
+
+      <div class="code-input-wrap" id="code-wrap" style="display:none">
+        <label>Paste your code here:</label>
+        <textarea id="code-input" class="code-ta"
+          placeholder="// Paste your Java or Python source code to debug..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn-run" id="run-btn" onclick="run()">
+          <span id="run-label">⚡ Generate Code</span>
+        </button>
+        <button class="btn-clear" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT + LOG -->
+  <div class="panel-right">
+    <div class="panel-header">
+      <span class="panel-title">Output</span>
+      <div class="status-badge idle" id="status-badge">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Idle</span>
+      </div>
+    </div>
+
+    <div class="output-wrap">
+      <div class="output-bar">
+        <span class="output-meta" id="output-meta">— no output yet —</span>
+        <button class="btn-copy" id="btn-copy" onclick="copyOutput()">Copy</button>
+      </div>
+      <div class="code-output" id="code-output">
+        <span class="placeholder-txt">Generated or debugged code will appear here...</span>
+      </div>
+    </div>
+
+    <div class="notif-header">
+      <span class="panel-title">Action Log</span>
+      <button class="btn-log-clear" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="notif-log" id="notif-log">
+      <div class="notif-item">
+        <div class="dot info"></div>
+        <div class="notif-msg">CodeMind ready — select a language and describe what to build.</div>
+        <div class="notif-time">now</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  State
+// ============================================================
+let lang = 'python';
+let mode = 'generate';
+let running = false;
+let outputText = '';
+
+const hints = {
+  generate: {
+    python: ['Binary search tree','REST API client','Fibonacci memoized','CSV file parser','Linked list'],
+    java:   ['Linked list impl','Builder pattern','Thread-safe queue','Sorting algorithms','Spring DI demo']
+  },
+  debug: {
+    python: ['Check null errors','Detect infinite loops','Review exceptions','Find logic bugs'],
+    java:   ['NullPointerException','Memory leak check','Thread safety','Generics issues']
+  }
+};
+
+// ============================================================
+//  Language / Mode switching
+// ============================================================
+function setLang(l) {
+  lang = l;
+  document.getElementById('tab-python').classList.toggle('active', l === 'python');
+  document.getElementById('tab-java').classList.toggle('active',   l === 'java');
+  renderChips();
+  addLog('info', `Switched to ${l === 'python' ? 'Python' : 'Java'} mode.`);
+}
+
+function setMode(m) {
+  mode = m;
+  const isDebug = m === 'debug';
+  document.getElementById('btn-generate').classList.toggle('active', !isDebug);
+  document.getElementById('btn-debug').classList.toggle('active',     isDebug);
+  document.getElementById('code-wrap').style.display  = isDebug ? 'flex' : 'none';
+  document.getElementById('input-label').textContent  = isDebug ? 'Paste code to debug'    : 'Describe what to build';
+  document.getElementById('prompt-label').textContent = isDebug ? 'Context (optional):'     : 'What do you want to build?';
+  document.getElementById('run-label').textContent    = isDebug ? '🔍 Debug Code'           : '⚡ Generate Code';
+  document.getElementById('prompt-input').placeholder = isDebug
+    ? 'Optionally describe what this code is supposed to do...'
+    : 'e.g. Write a binary search tree with insert, delete, traversal';
+  renderChips();
+  addLog('info', `Mode: ${m}.`);
+}
+
+function renderChips() {
+  const el = document.getElementById('hint-chips');
+  el.innerHTML = hints[mode][lang]
+    .map(t => `<button class="chip" onclick="applyChip('${t}')">${t}</button>`)
+    .join('');
+}
+
+function applyChip(text) {
+  document.getElementById('prompt-input').value = text;
+  addLog('info', `Prompt loaded: "${text}"`);
+}
+
+// ============================================================
+//  Status helpers
+// ============================================================
+function setStatus(state, text) {
+  const b = document.getElementById('status-badge');
+  const d = document.getElementById('status-dot');
+  b.className = 'status-badge ' + state;
+  d.className = 'status-dot' + (state === 'run' ? ' pulse' : '');
+  document.getElementById('status-text').textContent = text;
+}
+
+// ============================================================
+//  Notification log
+// ============================================================
+function addLog(type, msg) {
+  const log = document.getElementById('notif-log');
+  const t   = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const el  = document.createElement('div');
+  el.className = 'notif-item';
+  el.innerHTML = `<div class="dot ${type}"></div><div class="notif-msg">${msg}</div><div class="notif-time">${t}</div>`;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('notif-log').innerHTML = '';
+  addLog('info', 'Log cleared.');
+}
+
+// ============================================================
+//  Render notifications from API response
+// ============================================================
+function renderNotifications(notifications) {
+  if (!notifications) return;
+  notifications.forEach(n => addLog(n.type, n.message));
+}
+
+// ============================================================
+//  Copy output
+// ============================================================
+function copyOutput() {
+  navigator.clipboard.writeText(outputText).then(() => {
+    const btn = document.getElementById('btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ============================================================
+//  Clear all
+// ============================================================
+function clearAll() {
+  document.getElementById('prompt-input').value = '';
+  document.getElementById('code-input').value   = '';
+  document.getElementById('code-output').innerHTML = '<span class="placeholder-txt">Generated or debugged code will appear here...</span>';
+  document.getElementById('output-meta').textContent = '— no output yet —';
+  document.getElementById('btn-copy').style.display = 'none';
+  outputText = '';
+  setStatus('idle', 'Idle');
+  addLog('info', 'Workspace cleared.');
+}
+
+// ============================================================
+//  Stream output character-by-character
+// ============================================================
+async function streamText(text) {
+  const out = document.getElementById('code-output');
+  out.textContent = '';
+  const CHUNK = 8;
+  for (let i = 0; i < text.length; i += CHUNK) {
+    out.textContent += text.slice(i, i + CHUNK);
+    out.scrollTop = out.scrollHeight;
+    await new Promise(r => setTimeout(r, 6));
+  }
+}
+
+// ============================================================
+//  Main RUN action — calls Spring Boot backend
+// ============================================================
+async function run() {
+  if (running) return;
+
+  const prompt = document.getElementById('prompt-input').value.trim();
+  const code   = document.getElementById('code-input').value.trim();
+
+  if (mode === 'generate' && !prompt) { addLog('warning', 'Please enter a prompt.'); return; }
+  if (mode === 'debug'    && !code)   { addLog('warning', 'Please paste code to debug.'); return; }
+
+  running = true;
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('btn-copy').style.display = 'none';
+  document.getElementById('code-output').textContent = '';
+  document.getElementById('output-meta').textContent = `${lang.toUpperCase()} · processing...`;
+  outputText = '';
+  setStatus('run', 'Running');
+
+  const endpoint = mode === 'generate' ? '/api/code/generate' : '/api/code/debug';
+  const body = { mode, language: lang, prompt, code };
+
+  addLog('processing', `Sending ${mode} request to CodeMind backend...`);
+  addLog('info', `Language: ${lang.toUpperCase()}, Mode: ${mode}`);
+
+  try {
+    const res  = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    // Render backend notifications into the log
+    renderNotifications(data.notifications);
+
+    if (data.success) {
+      outputText = data.output || '';
+      await streamText(outputText);
+
+      const lines = data.lineCount || outputText.split('\n').length;
+      document.getElementById('output-meta').textContent =
+        `${lang.toUpperCase()} · ${lines} lines` +
+        (data.debugSummary
+          ? ` · ${data.debugSummary.errors} errors, ${data.debugSummary.warnings} warnings`
+          : '');
+      document.getElementById('btn-copy').style.display = 'block';
+      setStatus('done', 'Done');
+    } else {
+      document.getElementById('code-output').textContent = data.errorMessage || 'An error occurred.';
+      document.getElementById('output-meta').textContent = 'Error';
+      setStatus('error', 'Error');
+      addLog('error', data.errorMessage || 'Unknown error from backend.');
+    }
+
+  } catch (err) {
+    addLog('error', 'Network error: ' + err.message);
+    document.getElementById('code-output').textContent = 'Could not reach the backend. Is the Spring Boot server running?';
+    document.getElementById('output-meta').textContent = 'Network Error';
+    setStatus('error', 'Error');
+  } finally {
+    running = false;
+    document.getElementById('run-btn').disabled = false;
+  }
+}
+
+// Init
+renderChips();
+</script>
+</body>
+</html>
