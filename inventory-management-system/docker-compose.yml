@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  mysql-db:
+    image: mysql:8
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: inventorydb
+    ports:
+      - "3306:3306"
+
+  backend:
+    build: ./backend
+    container_name: inventory-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-db
+
+  frontend:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
